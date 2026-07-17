@@ -1,565 +1,1070 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Kursabrechnung</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-  :root{
-    --paper:#EAE8E0; --surface:#FCFBF8; --surface2:#F3F1EA;
-    --ink:#22261F; --muted:#767A6C; --line:#DAD7CC;
-    --pine:#3C5A4E; --pine-d:#2F4840; --pine-soft:#E4EBE5;
-    --ochre:#A9743B; --danger:#A6453B;
-    --serif:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif;
-    --sans:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0}
-  body{background:var(--paper); color:var(--ink); font-family:var(--sans); font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased}
-  .wrap{max-width:940px; margin:0 auto; padding:0 20px 80px}
-  header.app{padding:30px 0 20px; display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap}
-  .brand{font-family:var(--serif); font-size:29px; letter-spacing:.2px; font-weight:600}
-  .brand .thin{color:var(--muted); font-weight:400; font-style:italic}
-  .tagline{color:var(--muted); font-size:13.5px; margin-top:4px}
-  .userbar{font-size:12.5px; color:var(--muted); text-align:right}
-  .userbar b{color:var(--ink); font-weight:600}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kursabrechnung</title>
+  <script async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --paper: #EAE8E0;
+      --surface: #FCFBF8;
+      --surface2: #F3F1EA;
+      --ink: #22261F;
+      --muted: #767A6C;
+      --line: #DAD7CC;
+      --pine: #3C5A4E;
+      --pine-d: #2F4840;
+      --pine-soft: #E4EBE5;
+      --ochre: #A9743B;
+      --danger: #A6453B;
+      --serif: Iowan Old Style, Palatino, Georgia, serif;
+      --sans: system-ui, -apple-system, sans-serif;
+    }
 
-  nav.tabs{display:flex; flex-wrap:wrap; gap:2px; border-bottom:1px solid var(--line); margin-top:6px}
-  nav.tabs button{appearance:none; border:0; background:transparent; cursor:pointer; font-family:var(--sans); font-size:14px; color:var(--muted); padding:11px 15px; border-bottom:2px solid transparent; margin-bottom:-1px; border-radius:6px 6px 0 0}
-  nav.tabs button:hover{color:var(--ink); background:var(--surface2)}
-  nav.tabs button.active{color:var(--pine-d); border-bottom-color:var(--pine); font-weight:600}
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-  main{margin-top:26px}
-  .card{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:22px}
-  .card + .card{margin-top:18px}
-  h2{font-family:var(--serif); font-weight:600; font-size:21px; margin:0 0 3px}
-  .sub{color:var(--muted); font-size:13.5px; margin:0 0 18px}
+    html, body {
+      height: 100%;
+      background: var(--paper);
+      color: var(--ink);
+      font: 16px var(--sans);
+      line-height: 1.6;
+    }
 
-  label{display:block; font-size:12.5px; color:var(--muted); margin:0 0 5px; letter-spacing:.2px}
-  input,select,textarea{width:100%; font-family:var(--sans); font-size:15px; color:var(--ink); background:var(--surface); border:1px solid var(--line); border-radius:9px; padding:9px 11px; outline:none}
-  textarea{resize:vertical; min-height:96px; line-height:1.5}
-  input:focus,select:focus,textarea:focus{border-color:var(--pine); box-shadow:0 0 0 3px var(--pine-soft)}
-  .grid{display:grid; gap:13px}
-  .g2{grid-template-columns:1fr 1fr}
-  .g3{grid-template-columns:1fr 1fr 1fr}
-  .g4{grid-template-columns:repeat(4,1fr)}
-  @media(max-width:640px){.g2,.g3,.g4{grid-template-columns:1fr}}
+    body {
+      display: flex;
+      flex-direction: column;
+    }
 
-  .btn{appearance:none; cursor:pointer; font-family:var(--sans); font-size:14px; font-weight:600; border-radius:9px; padding:10px 16px; border:1px solid var(--pine); background:var(--pine); color:#fff}
-  .btn:hover{background:var(--pine-d); border-color:var(--pine-d)}
-  .btn:disabled{opacity:.45; cursor:not-allowed}
-  .btn.ghost{background:transparent; color:var(--pine-d); border-color:var(--line)}
-  .btn.ghost:hover{background:var(--surface2)}
-  .btn.link{background:transparent;border:0;color:var(--muted);padding:6px 8px;font-weight:500}
-  .btn.link:hover{color:var(--danger)}
-  .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:18px; align-items:center}
+    #app {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
 
-  table{width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums}
-  th{text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); font-weight:600; padding:0 10px 9px}
-  td{padding:11px 10px; border-top:1px solid var(--line); vertical-align:middle}
-  td.num,th.num{text-align:right}
-  tr.total td{border-top:2px solid var(--ink); font-weight:600}
+    /* Setup Screen */
+    .setup-screen {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: var(--paper);
+    }
 
-  .rowbar{display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap; margin-bottom:16px}
-  .rowbar .field{min-width:170px}
-  .spacer{flex:1}
+    .setup-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 40px;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
 
-  .empty{text-align:center; color:var(--muted); padding:34px 10px; font-size:14px}
-  .empty .big{font-family:var(--serif); font-size:19px; color:var(--ink); display:block; margin-bottom:4px}
+    .setup-card h1 {
+      font: 24px var(--serif);
+      margin-bottom: 8px;
+      color: var(--ink);
+    }
 
-  .kpi{display:flex; gap:14px; flex-wrap:wrap; margin-bottom:6px}
-  .kpi .box{flex:1; min-width:150px; background:var(--surface2); border:1px solid var(--line); border-radius:12px; padding:14px 16px}
-  .kpi .box .k{font-size:12px; color:var(--muted)}
-  .kpi .box .v{font-family:var(--serif); font-size:23px; margin-top:3px}
-  .kpi .box .v.money{color:var(--pine-d)}
+    .setup-card p {
+      color: var(--muted);
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
 
-  .note{font-size:12.5px; color:var(--muted); line-height:1.55; background:var(--surface2); border:1px solid var(--line); border-left:3px solid var(--ochre); border-radius:8px; padding:12px 14px; margin-top:16px}
-  .hint{font-size:12px;color:var(--muted);margin-top:8px}
-  .toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px); background:var(--ink); color:#fff; padding:11px 20px; border-radius:999px; font-size:13.5px; opacity:0; transition:.25s; pointer-events:none; z-index:50}
-  .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+    .form-group {
+      margin-bottom: 16px;
+    }
 
-  /* Gate (Setup / Login) */
-  .gate{max-width:420px; margin:9vh auto 0; padding:0 20px}
-  .gate .brand{font-size:30px; text-align:center}
-  .gate .tagline{text-align:center; margin-bottom:22px}
-  .gate .card .grid{gap:13px}
-  .switch{text-align:center; margin-top:14px; font-size:13px; color:var(--muted)}
-  .switch a{color:var(--pine-d); cursor:pointer; font-weight:600}
-  .err{color:var(--danger); font-size:13px; margin-top:10px; min-height:18px}
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
 
-  /* Rechnung / Druck */
-  #print-area{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:0; margin-top:20px}
-  .invoice{padding:46px 50px; font-size:14px; color:#1c1c1a}
-  .invoice .inv-head{display:flex; justify-content:space-between; align-items:flex-start; gap:20px}
-  .invoice .from{font-size:12px; color:#555; line-height:1.5}
-  .invoice .from .nm{font-family:var(--serif); font-size:15px; color:#1c1c1a}
-  .invoice .doc{font-family:var(--serif); font-size:30px; text-align:right}
-  .invoice .to{margin:30px 0 8px; line-height:1.55}
-  .invoice .to .lbl{font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:#888}
-  .invoice .meta{display:flex; gap:34px; flex-wrap:wrap; margin:22px 0 8px; font-size:13px}
-  .invoice .meta .m .l{font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:#888}
-  .invoice .meta .m .d{margin-top:2px}
-  .invoice table{margin-top:14px}
-  .invoice th{color:#888; border-bottom:1px solid #ccc; padding-bottom:8px}
-  .invoice td{border-top:1px solid #e6e3da}
-  .invoice tr.sum td{border-top:1px solid #ccc}
-  .invoice tr.grand td{border-top:2px solid #1c1c1a; font-family:var(--serif); font-size:17px; font-weight:600}
-  .invoice .foot{margin-top:34px; font-size:12px; color:#555; line-height:1.6; border-top:1px solid #e6e3da; padding-top:16px}
-  .invoice .kleinunt{margin-top:14px; font-size:12.5px; color:#444}
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      font: 14px var(--sans);
+      background: var(--surface2);
+      color: var(--ink);
+    }
 
-  @media print{
-    @page{margin:16mm}
-    body{background:#fff}
-    body *{visibility:hidden}
-    #print-area,#print-area *{visibility:visible}
-    #print-area{position:absolute; left:0; top:0; width:100%; border:0; margin:0; background:#fff}
-    .invoice{padding:0}
-    .noprint{display:none !important}
-  }
-</style>
+    .form-group textarea {
+      resize: vertical;
+      min-height: 60px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--pine);
+      background: var(--surface);
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 4px;
+      font: 14px var(--sans);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-primary {
+      background: var(--pine);
+      color: var(--surface);
+      width: 100%;
+    }
+
+    .btn-primary:hover {
+      background: var(--pine-d);
+    }
+
+    .error {
+      background: #FADBD8;
+      border: 1px solid #F5B7B1;
+      color: var(--danger);
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+
+    .success {
+      background: var(--pine-soft);
+      border: 1px solid var(--pine);
+      color: var(--pine-d);
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+
+    /* Auth Screen */
+    .auth-screen {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: var(--paper);
+    }
+
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 40px;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .auth-card h1 {
+      font: 24px var(--serif);
+      margin-bottom: 32px;
+      color: var(--ink);
+    }
+
+    /* Main App */
+    .app-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+    }
+
+    .header {
+      background: var(--pine);
+      color: var(--surface);
+      padding: 16px 20px;
+      font: 18px var(--serif);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 12px;
+      background: rgba(255,255,255,0.2);
+      color: var(--surface);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-small:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid var(--line);
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      padding: 12px 16px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      font: 14px var(--sans);
+      color: var(--muted);
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+      font-weight: 600;
+    }
+
+    .tab.active {
+      color: var(--pine);
+      border-bottom-color: var(--pine);
+    }
+
+    .tab:hover:not(.active) {
+      color: var(--ink);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Forms & Tables */
+    .form-section {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .form-section h2 {
+      font: 16px var(--serif);
+      margin-bottom: 16px;
+      color: var(--ink);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .form-row.full {
+      grid-template-columns: 1fr;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 24px;
+    }
+
+    thead {
+      background: var(--paper);
+      border-bottom: 2px solid var(--line);
+    }
+
+    th {
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    td {
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    tbody tr:hover {
+      background: var(--paper);
+    }
+
+    /* Print Styles */
+    @media print {
+      body, .app-container, .content {
+        background: white;
+        color: black;
+      }
+      .header, .tabs, .btn, input, textarea, .tab-content:not(.active) {
+        display: none !important;
+      }
+      .tab-content.active {
+        display: block !important;
+      }
+      table {
+        break-inside: avoid;
+      }
+      .invoice-container {
+        page-break-after: always;
+      }
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .disclaimer {
+      background: #FFF8E1;
+      border: 1px solid #FFE082;
+      border-radius: 4px;
+      padding: 12px;
+      font-size: 12px;
+      color: #666;
+      margin-top: 16px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font: 20px var(--serif);
+      font-weight: bold;
+      color: var(--pine);
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    select {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      font: 14px var(--sans);
+      background: var(--surface2);
+      color: var(--ink);
+    }
+
+    select:focus {
+      outline: none;
+      border-color: var(--pine);
+      background: var(--surface);
+    }
+  </style>
 </head>
 <body>
-<div id="root"></div>
-<div class="toast" id="toast"></div>
+  <div id="app"></div>
 
-<script>
-/* =============================================================
-   KONFIGURATION
-   Trage hier deine Supabase-Zugangsdaten ein (Project Settings → API).
-   Der anon key ist für den Browser gedacht und darf öffentlich sein –
-   der Schutz läuft über Login + Row Level Security in Supabase.
-   Lässt du beides leer, fragt die App beim Start danach.
-   ============================================================= */
-const SUPABASE_URL = "";
-const SUPABASE_ANON_KEY = "";
+  <script>
+    // App State
+    let supabase = null;
+    let currentUser = null;
+    let appState = 'setup'; // setup, auth, app
+    let currentTab = 'erfassen';
 
-/* ===================== Setup / Client ===================== */
-function cfg(){
-  const url = SUPABASE_URL || localStorage.getItem('sb_url') || '';
-  const key = SUPABASE_ANON_KEY || localStorage.getItem('sb_key') || '';
-  return {url,key};
-}
-let sb=null, session=null;
-const DEFAULT_SETTINGS={
-  name:'', strasse:'', plz:'', ort:'', steuernummer:'', ustId:'',
-  iban:'', bank:'', zahlungsziel:14,
-  kleinunternehmer:true, ustSatz:19, kmSatz:0.30,
-  rechnungPrefix:(new Date().getFullYear())+'-', naechsteNr:1,
-  emailBetreff:'Rechnung {nr} – {monat}',
-  emailText:'Liebes Team von {studio},\n\nanbei erhaltet ihr meine Rechnung {nr} für {monat} über {betrag}.\nBei Fragen meldet euch jederzeit gerne.\n\nHerzliche Grüße\n{name}'
-};
-let SET=structuredClone(DEFAULT_SETTINGS);
-let STUDIOS=[], EINTRAEGE=[];
-const UI={tab:'erfassen', month:mkNow(), rStudio:'', rMonth:mkNow(), fJahr:new Date().getFullYear(), editStudio:null, authMode:'login'};
+    // Data
+    let studios = [];
+    let eintraege = [];
+    let appSettings = {
+      name: 'Katharina',
+      strasse: '',
+      plz: '',
+      ort: '',
+      steuernummer: '',
+      ustId: '',
+      iban: '',
+      bank: '',
+      zahlungsziel: 14,
+      kleinunternehmer: true,
+      ustSatz: 19,
+      kmSatz: 0.30,
+      rechnungPrefix: '2026-',
+      naechsteNr: 1,
+      emailBetreff: 'Rechnung {nr} – {monat}',
+      emailText: 'Liebes Team von {studio},\n\nuanbei erhalten Sie die Abrechnung für die Kurse im gewählten Zeitraum.\n\nBest regards,\n{name}',
+      einheit: 'Kurs'
+    };
 
-/* ===================== Helfer ===================== */
-function mkNow(){const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
-function eur(n){return new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(n||0)}
-function dDE(s){if(!s)return''; const d=new Date(s+'T00:00:00'); return new Intl.DateTimeFormat('de-DE').format(d)}
-function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function todayISO(){const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
-function studioById(id){return STUDIOS.find(s=>s.id===id)}
-function monthLabel(mk){const [y,m]=mk.split('-'); const n=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember']; return n[+m-1]+' '+y}
-function entriesFor(id,mk){return EINTRAEGE.filter(e=>e.studio_id===id && String(e.datum).slice(0,7)===mk).sort((a,b)=>String(a.datum).localeCompare(String(b.datum)))}
-function lineTotal(e){const s=studioById(e.studio_id); return s?(e.anzahl*Number(s.verguetung)):0}
-function val(id){const el=document.getElementById(id); return el?el.value:''}
-function toast(m){const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),1900)}
-function fillTpl(str,map){return String(str||'').replace(/\{(\w+)\}/g,(_,k)=>map[k]??'')}
+    const app = document.getElementById('app');
 
-/* ===================== Datenzugriff (Supabase) ===================== */
-async function loadAll(){
-  const s1=await sb.from('app_settings').select('data').eq('id','main').maybeSingle();
-  SET=Object.assign(structuredClone(DEFAULT_SETTINGS), (s1.data&&s1.data.data)||{});
-  const s2=await sb.from('studios').select('*').order('name');
-  STUDIOS=s2.data||[];
-  const s3=await sb.from('eintraege').select('*').order('datum');
-  EINTRAEGE=s3.data||[];
-}
-async function saveSettings(){ await sb.from('app_settings').upsert({id:'main', data:SET}); }
-async function addStudio(rec){ const {error}=await sb.from('studios').insert(rec); if(error)toast('Fehler: '+error.message); await loadAll(); }
-async function updateStudio(id,rec){ const {error}=await sb.from('studios').update(rec).eq('id',id); if(error)toast('Fehler: '+error.message); await loadAll(); }
-async function delStudio(id){ await sb.from('studios').delete().eq('id',id); await loadAll(); }
-async function addEntry(rec){ const {error}=await sb.from('eintraege').insert(rec); if(error)toast('Fehler: '+error.message); await loadAll(); }
-async function delEntry(id){ await sb.from('eintraege').delete().eq('id',id); await loadAll(); }
+    // Setup Screen
+    function renderSetupScreen() {
+      app.innerHTML = `
+        <div class="setup-screen">
+          <div class="setup-card">
+            <h1>Kursabrechnung</h1>
+            <p>Supabase-Verbindung einrichten</p>
+            <div id="setupError" class="error hidden"></div>
+            <div class="form-group">
+              <label>Supabase Project URL</label>
+              <input type="text" id="projectUrl" placeholder="https://xyz123.supabase.co">
+            </div>
+            <div class="form-group">
+              <label>Anon Public Key</label>
+              <textarea id="anonKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."></textarea>
+            </div>
+            <button class="btn btn-primary" onclick="window.initSupabase()">Verbinden</button>
+          </div>
+        </div>
+      `;
+    }
 
-/* ===================== Boot & Auth-Gate ===================== */
-async function boot(){
-  const {url,key}=cfg();
-  if(!url||!key){ renderSetup(); return; }
-  sb=supabase.createClient(url,key);
-  const {data}=await sb.auth.getSession();
-  session=data.session;
-  sb.auth.onAuthStateChange((_e,s)=>{ session=s; if(!s) renderAuth(); });
-  if(session){ await enterApp(); } else { renderAuth(); }
-}
-async function enterApp(){ await loadAll(); render(); }
+    // Init Supabase
+    window.initSupabase = async function() {
+      const projectUrl = document.getElementById('projectUrl').value.trim();
+      const anonKey = document.getElementById('anonKey').value.trim();
+      const errorDiv = document.getElementById('setupError');
 
-function renderSetup(){
-  document.getElementById('root').innerHTML=`<div class="gate">
-    <div class="brand">Kurs<span class="thin">abrechnung</span></div>
-    <div class="tagline">Einmalige Einrichtung</div>
-    <div class="card">
-      <h2 style="font-size:18px">Mit Supabase verbinden</h2>
-      <p class="sub">Zu finden im Supabase-Projekt unter <b>Project Settings → API</b>.</p>
-      <div class="grid">
-        <div class="field"><label>Project URL</label><input id="su-url" placeholder="https://xxxx.supabase.co"></div>
-        <div class="field"><label>anon public key</label><input id="su-key" placeholder="eyJhbGciOi…"></div>
-      </div>
-      <div class="actions"><button class="btn" data-action="setup-save">Verbinden</button></div>
-      <div class="hint">Wird nur lokal in diesem Browser gespeichert. Du kannst die Werte auch direkt oben in der HTML-Datei eintragen.</div>
-    </div>
-  </div>`;
-}
-function renderAuth(){
-  const login=UI.authMode==='login';
-  document.getElementById('root').innerHTML=`<div class="gate">
-    <div class="brand">Kurs<span class="thin">abrechnung</span></div>
-    <div class="tagline">${login?'Anmelden':'Konto anlegen'}</div>
-    <div class="card">
-      <div class="grid">
-        <div class="field"><label>E-Mail</label><input id="au-mail" type="email" autocomplete="username"></div>
-        <div class="field"><label>Passwort</label><input id="au-pass" type="password" autocomplete="${login?'current-password':'new-password'}"></div>
-      </div>
-      <div class="actions"><button class="btn" data-action="${login?'do-login':'do-signup'}">${login?'Anmelden':'Registrieren'}</button></div>
-      <div class="err" id="au-err"></div>
-    </div>
-    <div class="switch">${login?'Noch kein Konto? ':'Schon registriert? '}<a data-action="auth-switch">${login?'Konto anlegen':'Zur Anmeldung'}</a></div>
-  </div>`;
-}
+      if (!projectUrl || !anonKey) {
+        errorDiv.textContent = 'Bitte beide Felder ausfüllen.';
+        errorDiv.classList.remove('hidden');
+        return;
+      }
 
-/* ===================== App-Rahmen ===================== */
-function render(){
-  const email=session?.user?.email||'';
-  document.getElementById('root').innerHTML=`<div class="wrap">
-    <header class="app">
-      <div>
-        <div class="brand">Kurs<span class="thin">abrechnung</span></div>
-        <div class="tagline">Kurse festhalten · Rechnungen erstellen · Fahrtkosten für die Steuer</div>
-      </div>
-      <div class="userbar">Angemeldet als<br><b>${esc(email)}</b><br><button class="btn link" data-action="logout" style="padding:4px 0">abmelden</button></div>
-    </header>
-    <nav class="tabs" id="tabs">
-      ${['erfassen:Erfassen','uebersicht:Übersicht','rechnung:Rechnung','fahrtkosten:Fahrtkosten','studios:Studios','einstellungen:Einstellungen']
-        .map(t=>{const[k,l]=t.split(':'); return `<button data-action="nav" data-tab="${k}" class="${UI.tab===k?'active':''}">${l}</button>`}).join('')}
-    </nav>
-    <main id="app"></main>
-  </div>`;
-  document.getElementById('app').innerHTML=({
-    erfassen:viewErfassen, uebersicht:viewUebersicht, rechnung:viewRechnung,
-    fahrtkosten:viewFahrtkosten, studios:viewStudios, einstellungen:viewEinstellungen
-  }[UI.tab])();
-}
+      try {
+        supabase = window.supabase.createClient(projectUrl, anonKey);
+        localStorage.setItem('supabaseUrl', projectUrl);
+        localStorage.setItem('supabaseKey', anonKey);
+        appState = 'auth';
+        renderAuthScreen();
+      } catch (err) {
+        errorDiv.textContent = 'Verbindung fehlgeschlagen: ' + err.message;
+        errorDiv.classList.remove('hidden');
+      }
+    };
 
-/* ===================== Ansicht: Erfassen ===================== */
-function studioOptions(sel){
-  if(!STUDIOS.length) return '<option value="">– zuerst ein Studio anlegen –</option>';
-  return STUDIOS.map(s=>`<option value="${s.id}" ${s.id===sel?'selected':''}>${esc(s.name)}</option>`).join('');
-}
-function viewErfassen(){
-  const s0=STUDIOS[0];
-  return `<div class="card">
-    <h2>Kurs erfassen</h2>
-    <p class="sub">Nach jedem Kurs kurz eintragen – der Rest rechnet sich am Monatsende von allein.</p>
-    <div class="grid g4">
-      <div class="field"><label>Datum</label><input type="date" id="e-datum" value="${todayISO()}"></div>
-      <div class="field"><label>Studio</label><select id="e-studio">${studioOptions(s0?s0.id:'')}</select></div>
-      <div class="field"><label>Anzahl <span id="e-einheit-lbl">Kurse</span></label><input type="number" id="e-anzahl" value="1" min="1" step="1"></div>
-      <div class="field"><label>Notiz (optional)</label><input type="text" id="e-notiz" placeholder="z. B. Vinyasa 90 Min."></div>
-    </div>
-    <div class="actions"><button class="btn" data-action="entry-add">Kurs eintragen</button></div>
-  </div>${recentCard()}`;
-}
-function recentCard(){
-  const last=[...EINTRAEGE].sort((a,b)=>String(b.datum).localeCompare(String(a.datum))).slice(0,6);
-  if(!last.length) return '';
-  return `<div class="card"><h2 style="font-size:17px">Zuletzt erfasst</h2><table><tbody>${last.map(e=>{const s=studioById(e.studio_id); return `<tr>
-    <td>${dDE(e.datum)}</td><td>${esc(s?s.name:'—')}</td>
-    <td>${e.anzahl}× ${esc(s?s.einheit:'')}${e.notiz?' · '+esc(e.notiz):''}</td>
-    <td class="num">${eur(lineTotal(e))}</td>
-    <td class="num"><button class="btn link" data-action="entry-del" data-id="${e.id}">löschen</button></td></tr>`}).join('')}</tbody></table></div>`;
-}
+    // Auth Screen
+    function renderAuthScreen() {
+      app.innerHTML = `
+        <div class="auth-screen">
+          <div class="auth-card">
+            <h1>Anmelden</h1>
+            <div id="authError" class="error hidden"></div>
+            <div class="form-group">
+              <label>E-Mail</label>
+              <input type="email" id="email" placeholder="deine@email.com">
+            </div>
+            <div class="form-group">
+              <label>Passwort</label>
+              <input type="password" id="password" placeholder="••••••••">
+            </div>
+            <button class="btn btn-primary" onclick="window.login()">Anmelden</button>
+            <div style="margin-top: 16px; text-align: center;">
+              <button class="btn-small" onclick="window.showSetup()">Verbindung ändern</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
 
-/* ===================== Ansicht: Übersicht ===================== */
-function viewUebersicht(){
-  const mk=UI.month;
-  const ents=EINTRAEGE.filter(e=>String(e.datum).slice(0,7)===mk).sort((a,b)=>String(a.datum).localeCompare(String(b.datum)));
-  const summe=ents.reduce((a,e)=>a+lineTotal(e),0);
-  const fahrten={}; ents.forEach(e=>{fahrten[e.studio_id]=(fahrten[e.studio_id]||0)+1});
-  let km=0; Object.keys(fahrten).forEach(id=>{const s=studioById(id); if(s) km+=fahrten[id]*Number(s.entfernung||0)*2});
-  const kmBetrag=km*SET.kmSatz;
-  const body = ents.length ? `<table>
-    <thead><tr><th>Datum</th><th>Studio</th><th>Leistung</th><th class="num">Anzahl</th><th class="num">Einzeln</th><th class="num">Betrag</th><th></th></tr></thead>
-    <tbody>${ents.map(e=>{const s=studioById(e.studio_id); return `<tr>
-      <td>${dDE(e.datum)}</td><td>${esc(s?s.name:'—')}</td>
-      <td>${esc(e.notiz||(s?('Yoga-'+s.einheit):''))}</td>
-      <td class="num">${e.anzahl}</td><td class="num">${eur(s?s.verguetung:0)}</td><td class="num">${eur(lineTotal(e))}</td>
-      <td class="num"><button class="btn link" data-action="entry-del" data-id="${e.id}">✕</button></td></tr>`}).join('')}
-      <tr class="total"><td colspan="5">Summe ${esc(monthLabel(mk))}</td><td class="num">${eur(summe)}</td><td></td></tr>
-    </tbody></table>` : `<div class="empty"><span class="big">Noch nichts erfasst</span>Für ${esc(monthLabel(mk))} sind keine Kurse eingetragen.</div>`;
-  return `<div class="card">
-    <div class="rowbar"><div class="field"><label>Monat</label><input type="month" id="ov-month" value="${mk}" data-action="month-ov"></div><div class="spacer"></div></div>
-    <div class="kpi">
-      <div class="box"><div class="k">Kurse gesamt</div><div class="v">${ents.reduce((a,e)=>a+e.anzahl,0)}</div></div>
-      <div class="box"><div class="k">Honorar ${esc(monthLabel(mk))}</div><div class="v money">${eur(summe)}</div></div>
-      <div class="box"><div class="k">Fahrten · Kilometer</div><div class="v">${Object.values(fahrten).reduce((a,b)=>a+b,0)} · ${km.toLocaleString('de-DE')} km</div></div>
-      <div class="box"><div class="k">Fahrtkosten (${SET.kmSatz.toLocaleString('de-DE',{minimumFractionDigits:2})} €/km)</div><div class="v money">${eur(kmBetrag)}</div></div>
-    </div>${body}</div>`;
-}
+    window.showSetup = function() {
+      appState = 'setup';
+      renderSetupScreen();
+    };
 
-/* ===================== Ansicht: Rechnung ===================== */
-function viewRechnung(){
-  if(!UI.rStudio && STUDIOS[0]) UI.rStudio=STUDIOS[0].id;
-  const s=studioById(UI.rStudio);
-  const hasMail = s && s.email;
-  return `<div class="card noprint">
-    <h2>Rechnung erstellen</h2>
-    <p class="sub">Studio und Monat wählen – die Positionen entstehen aus den erfassten Kursen.</p>
-    <div class="rowbar">
-      <div class="field"><label>Studio</label><select id="r-studio" data-action="r-studio">${studioOptions(UI.rStudio)}</select></div>
-      <div class="field"><label>Monat</label><input type="month" id="r-month" value="${UI.rMonth}" data-action="r-month"></div>
-      <div class="field"><label>Rechnungsnummer</label><input type="text" id="r-nr" value="${esc(SET.rechnungPrefix+SET.naechsteNr)}"></div>
-      <div class="field"><label>Rechnungsdatum</label><input type="date" id="r-datum" value="${todayISO()}"></div>
-    </div>
-    <div class="actions">
-      <button class="btn" data-action="r-print">Drucken / als PDF</button>
-      <button class="btn ghost" data-action="r-mail" ${hasMail?'':'disabled'}>E-Mail an Studio vorbereiten</button>
-      ${s&&!hasMail?'<span class="hint" style="margin:0">Für diese Funktion beim Studio eine E-Mail-Adresse hinterlegen.</span>':''}
-    </div>
-    <div class="hint">Die E-Mail öffnet sich mit fertigem Betreff und Text in deinem Mailprogramm. Speichere die Rechnung vorher über „Drucken / als PDF" und hänge sie an.</div>
-  </div><div id="print-area">${invoiceHTML()}</div>`;
-}
-function invoiceData(){
-  const s=studioById(UI.rStudio), mk=UI.rMonth;
-  const ents=s?entriesFor(s.id,mk):[];
-  const netto=ents.reduce((a,e)=>a+lineTotal(e),0);
-  const ust=SET.kleinunternehmer?0:netto*SET.ustSatz/100;
-  const brutto=netto+ust;
-  const nr=(document.getElementById('r-nr')?.value)||(SET.rechnungPrefix+SET.naechsteNr);
-  const rdat=(document.getElementById('r-datum')?.value)||todayISO();
-  const zeitraum=ents.length?`${dDE(ents[0].datum)} – ${dDE(ents[ents.length-1].datum)}`:monthLabel(mk);
-  return {s,mk,ents,netto,ust,brutto,nr,rdat,zeitraum};
-}
-function invoiceHTML(){
-  const {s,mk,ents,netto,ust,brutto,nr,rdat,zeitraum}=invoiceData();
-  if(!s) return `<div class="invoice"><div class="empty">Kein Studio ausgewählt.</div></div>`;
-  if(!ents.length) return `<div class="invoice"><div class="empty"><span class="big">Keine Positionen</span>Für ${esc(s.name)} sind im ${esc(monthLabel(mk))} keine Kurse erfasst.</div></div>`;
-  const rows=ents.map(e=>`<tr><td>${dDE(e.datum)}</td><td>${esc(e.notiz||('Yoga-'+s.einheit))}</td><td class="num">${e.anzahl}</td><td class="num">${eur(s.verguetung)}</td><td class="num">${eur(lineTotal(e))}</td></tr>`).join('');
-  const ustRows=SET.kleinunternehmer?'':`<tr class="sum"><td colspan="4" class="num">Nettobetrag</td><td class="num">${eur(netto)}</td></tr><tr><td colspan="4" class="num">zzgl. ${SET.ustSatz}% USt</td><td class="num">${eur(ust)}</td></tr>`;
-  const kleinNote=SET.kleinunternehmer?`<div class="kleinunt">Gemäß § 19 UStG ist in diesem Betrag keine Umsatzsteuer enthalten (Kleinunternehmerregelung).</div>`:'';
-  const to=[s.name,s.ansprechpartner,s.strasse,((s.plz||'')+' '+(s.ort||'')).trim()].filter(Boolean);
-  return `<div class="invoice">
-    <div class="inv-head">
-      <div class="from"><div class="nm">${esc(SET.name||'Dein Name')}</div>
-        ${SET.strasse?esc(SET.strasse)+'<br>':''}${esc(((SET.plz||'')+' '+(SET.ort||'')).trim())}
-        ${SET.steuernummer?'<br>Steuernr.: '+esc(SET.steuernummer):''}${SET.ustId?'<br>USt-IdNr.: '+esc(SET.ustId):''}</div>
-      <div class="doc">Rechnung</div>
-    </div>
-    <div class="to"><div class="lbl">Rechnung an</div><div>${to.map(esc).join('<br>')}</div></div>
-    <div class="meta">
-      <div class="m"><div class="l">Rechnungsnr.</div><div class="d">${esc(nr)}</div></div>
-      <div class="m"><div class="l">Datum</div><div class="d">${dDE(rdat)}</div></div>
-      <div class="m"><div class="l">Leistungszeitraum</div><div class="d">${esc(zeitraum)}</div></div>
-    </div>
-    <table><thead><tr><th>Datum</th><th>Leistung</th><th class="num">Anzahl</th><th class="num">Einzelpreis</th><th class="num">Betrag</th></tr></thead>
-      <tbody>${rows}${ustRows}<tr class="grand"><td colspan="4" class="num">Gesamtbetrag</td><td class="num">${eur(brutto)}</td></tr></tbody></table>
-    ${kleinNote}
-    <div class="foot">Bitte überweise den Betrag innerhalb von ${SET.zahlungsziel||14} Tagen${SET.iban?' auf folgendes Konto:':'.'}
-      ${SET.iban?'<br>IBAN: '+esc(SET.iban)+(SET.bank?' · '+esc(SET.bank):''):''}
-      <br><br>Vielen Dank für die gute Zusammenarbeit.</div>
-  </div>`;
-}
+    window.login = async function() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const errorDiv = document.getElementById('authError');
 
-/* ===================== Ansicht: Fahrtkosten ===================== */
-function viewFahrtkosten(){
-  const jahr=UI.fJahr;
-  const rows=STUDIOS.map(s=>{
-    const ents=EINTRAEGE.filter(e=>e.studio_id===s.id && String(e.datum).slice(0,4)==String(jahr));
-    const fahrten=ents.length, km=fahrten*Number(s.entfernung||0)*2;
-    return {name:s.name, entf:Number(s.entfernung||0), fahrten, km, betrag:km*SET.kmSatz};
-  }).filter(r=>r.fahrten>0);
-  const tKm=rows.reduce((a,r)=>a+r.km,0), tBet=rows.reduce((a,r)=>a+r.betrag,0), tF=rows.reduce((a,r)=>a+r.fahrten,0);
-  const jahre=[...new Set(EINTRAEGE.map(e=>+String(e.datum).slice(0,4)))].sort((a,b)=>b-a);
-  if(!jahre.includes(jahr)) jahre.unshift(jahr);
-  const table=rows.length?`<table>
-    <thead><tr><th>Studio</th><th class="num">Entfernung einfach</th><th class="num">Fahrten</th><th class="num">km (hin & zurück)</th><th class="num">Betrag</th></tr></thead>
-    <tbody>${rows.map(r=>`<tr><td>${esc(r.name)}</td><td class="num">${r.entf.toLocaleString('de-DE')} km</td><td class="num">${r.fahrten}</td><td class="num">${r.km.toLocaleString('de-DE')} km</td><td class="num">${eur(r.betrag)}</td></tr>`).join('')}
-    <tr class="total"><td>Gesamt ${jahr}</td><td class="num"></td><td class="num">${tF}</td><td class="num">${tKm.toLocaleString('de-DE')} km</td><td class="num">${eur(tBet)}</td></tr></tbody></table>`
-    :`<div class="empty"><span class="big">Keine Fahrten</span>Für ${jahr} sind keine Kurse erfasst.</div>`;
-  return `<div class="card">
-    <h2>Fahrtkosten ${jahr}</h2>
-    <p class="sub">Pro erfasstem Kurs wird eine Hin- und Rückfahrt gezählt. Grundlage für die Steuererklärung.</p>
-    <div class="rowbar"><div class="field"><label>Jahr</label><select id="f-jahr" data-action="f-jahr">${jahre.map(j=>`<option ${j===jahr?'selected':''}>${j}</option>`).join('')}</select></div><div class="spacer"></div><button class="btn ghost" data-action="f-csv">Als CSV exportieren</button></div>
-    ${table}
-    <div class="note"><b>Hinweis zur Steuer:</b> Als selbstständige Kursleiterin sind die Fahrten zu den Studios Betriebsausgaben (Reisekosten). Angesetzt ist die pauschale Kilometerpauschale von ${SET.kmSatz.toLocaleString('de-DE',{minimumFractionDigits:2})} € je gefahrenem Kilometer (hin & zurück). Bitte die genaue Behandlung – auch eine mögliche Umsatzsteuerbefreiung von Unterrichtsleistungen – mit dem Steuerberater abstimmen. Dies ersetzt keine Steuerberatung.</div>
-  </div>`;
-}
+      if (!email || !password) {
+        errorDiv.textContent = 'Bitte E-Mail und Passwort eingeben.';
+        errorDiv.classList.remove('hidden');
+        return;
+      }
 
-/* ===================== Ansicht: Studios ===================== */
-function viewStudios(){
-  const e=UI.editStudio?studioById(UI.editStudio):null;
-  const list=STUDIOS.length?`<table>
-    <thead><tr><th>Studio</th><th class="num">Vergütung</th><th>Einheit</th><th class="num">Entfernung</th><th></th></tr></thead>
-    <tbody>${STUDIOS.map(s=>`<tr>
-      <td>${esc(s.name)}<div style="color:var(--muted);font-size:12.5px">${esc(((s.plz||'')+' '+(s.ort||'')).trim())}${s.email?' · '+esc(s.email):''}</div></td>
-      <td class="num">${eur(s.verguetung)}</td><td>${esc(s.einheit)}</td><td class="num">${Number(s.entfernung||0).toLocaleString('de-DE')} km</td>
-      <td class="num"><button class="btn link" data-action="studio-edit" data-id="${s.id}">bearbeiten</button><button class="btn link" data-action="studio-del" data-id="${s.id}">löschen</button></td></tr>`).join('')}</tbody></table>`
-    :`<div class="empty"><span class="big">Noch keine Studios</span>Lege unten das erste Studio an.</div>`;
-  return `<div class="card">
-    <h2>${e?'Studio bearbeiten':'Neues Studio'}</h2>
-    <p class="sub">Vergütung, Entfernung und E-Mail einmal hinterlegen – danach reicht ein Klick.</p>
-    <div class="grid g2">
-      <div class="field"><label>Name des Studios</label><input id="s-name" value="${esc(e?.name||'')}" placeholder="z. B. Yoga Loft Süd"></div>
-      <div class="field"><label>Ansprechpartner (optional)</label><input id="s-ap" value="${esc(e?.ansprechpartner||'')}"></div>
-      <div class="field"><label>E-Mail des Studios</label><input id="s-email" type="email" value="${esc(e?.email||'')}" placeholder="buchhaltung@studio.de"></div>
-      <div class="field"><label>Straße</label><input id="s-strasse" value="${esc(e?.strasse||'')}"></div>
-      <div class="field"><label>PLZ & Ort</label><input id="s-plzort" value="${esc(((e?.plz||'')+' '+(e?.ort||'')).trim())}" placeholder="70199 Stuttgart"></div>
-      <div class="field"><label>Vergütung je Einheit (€)</label><input id="s-verg" type="number" step="0.01" min="0" value="${e?e.verguetung:''}" placeholder="35"></div>
-      <div class="field"><label>Abrechnung je</label><select id="s-einheit"><option ${e?.einheit==='Kurs'?'selected':''}>Kurs</option><option ${e?.einheit==='Stunde'?'selected':''}>Stunde</option></select></div>
-      <div class="field"><label>Entfernung einfach (km)</label><input id="s-entf" type="number" step="0.1" min="0" value="${e?e.entfernung:''}" placeholder="8,5"></div>
-    </div>
-    <div class="actions"><button class="btn" data-action="studio-save">${e?'Änderungen speichern':'Studio anlegen'}</button>${e?'<button class="btn ghost" data-action="studio-cancel">Abbrechen</button>':''}</div>
-  </div>
-  <div class="card"><h2 style="font-size:17px">Eure Studios</h2>${list}</div>`;
-}
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        currentUser = data.user;
+        appState = 'app';
+        await loadAppData();
+        renderApp();
+      } catch (err) {
+        errorDiv.textContent = 'Anmeldung fehlgeschlagen: ' + err.message;
+        errorDiv.classList.remove('hidden');
+      }
+    };
 
-/* ===================== Ansicht: Einstellungen ===================== */
-function viewEinstellungen(){
-  const s=SET;
-  return `<div class="card">
-    <h2>Absender-Angaben</h2><p class="sub">Erscheinen auf jeder Rechnung.</p>
-    <div class="grid g2">
-      <div class="field"><label>Name</label><input id="c-name" value="${esc(s.name)}" placeholder="Vor- und Nachname"></div>
-      <div class="field"><label>Straße</label><input id="c-strasse" value="${esc(s.strasse)}"></div>
-      <div class="field"><label>PLZ</label><input id="c-plz" value="${esc(s.plz)}"></div>
-      <div class="field"><label>Ort</label><input id="c-ort" value="${esc(s.ort)}"></div>
-      <div class="field"><label>Steuernummer</label><input id="c-stnr" value="${esc(s.steuernummer)}"></div>
-      <div class="field"><label>USt-IdNr. (falls vorhanden)</label><input id="c-ustid" value="${esc(s.ustId)}"></div>
-      <div class="field"><label>IBAN</label><input id="c-iban" value="${esc(s.iban)}"></div>
-      <div class="field"><label>Bank</label><input id="c-bank" value="${esc(s.bank)}"></div>
-    </div>
-  </div>
-  <div class="card">
-    <h2>Rechnung & Steuer</h2>
-    <div class="grid g3">
-      <div class="field"><label>Zahlungsziel (Tage)</label><input id="c-ziel" type="number" min="0" value="${s.zahlungsziel}"></div>
-      <div class="field"><label>Rechnungsnr.-Präfix</label><input id="c-prefix" value="${esc(s.rechnungPrefix)}"></div>
-      <div class="field"><label>Nächste Rechnungsnr.</label><input id="c-nnr" type="number" min="1" value="${s.naechsteNr}"></div>
-      <div class="field"><label>Kilometerpauschale (€/km)</label><input id="c-km" type="number" step="0.01" min="0" value="${s.kmSatz}"></div>
-      <div class="field"><label>Kleinunternehmer (§19)</label><select id="c-klein"><option value="1" ${s.kleinunternehmer?'selected':''}>Ja – keine USt ausweisen</option><option value="0" ${!s.kleinunternehmer?'selected':''}>Nein – USt ausweisen</option></select></div>
-      <div class="field"><label>USt-Satz (%)</label><input id="c-ust" type="number" step="1" min="0" value="${s.ustSatz}"></div>
-    </div>
-    <div class="note">Ob die Kleinunternehmerregelung gilt und ob Unterrichtsleistungen umsatzsteuerfrei sind (§ 4 UStG), hängt vom Einzelfall ab – im Zweifel mit dem Steuerberater klären.</div>
-  </div>
-  <div class="card">
-    <h2>E-Mail-Vorlage</h2><p class="sub">Platzhalter: {studio} {nr} {monat} {betrag} {name} {zeitraum}</p>
-    <div class="grid"><div class="field"><label>Betreff</label><input id="c-ebetreff" value="${esc(s.emailBetreff)}"></div>
-    <div class="field"><label>Text</label><textarea id="c-etext">${esc(s.emailText)}</textarea></div></div>
-  </div>
-  <div class="card">
-    <div class="actions"><button class="btn" data-action="settings-save">Alle Einstellungen speichern</button>
-      <button class="btn ghost" data-action="data-export">Sicherung exportieren</button></div>
-    <div class="hint">Die Daten liegen dauerhaft in Supabase (mit eigenen Backups). Der Export ist ein zusätzlicher Schnappschuss als JSON.</div>
-  </div>`;
-}
+    // Load App Data
+    async function loadAppData() {
+      try {
+        // Load Studios
+        const { data: studiosData, error: studiosError } = await supabase
+          .from('studios')
+          .select('*');
+        if (!studiosError) studios = studiosData || [];
 
-/* ===================== E-Mail-Entwurf ===================== */
-function prepareMail(){
-  const {s,brutto,nr,zeitraum,ents,mk}=invoiceData();
-  if(!s||!s.email){ toast('Für dieses Studio ist keine E-Mail hinterlegt.'); return; }
-  if(!ents.length){ toast('Für diesen Monat gibt es keine Positionen.'); return; }
-  const map={studio:s.name, nr, monat:monthLabel(mk), betrag:eur(brutto), name:SET.name, zeitraum};
-  const subj=fillTpl(SET.emailBetreff,map), body=fillTpl(SET.emailText,map);
-  window.location.href=`mailto:${encodeURIComponent(s.email)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
-}
+        // Load Einträge
+        const { data: eintragData, error: eintragError } = await supabase
+          .from('eintraege')
+          .select('*');
+        if (!eintragError) eintraege = eintragData || [];
 
-/* ===================== Export ===================== */
-function download(name,content,type){const b=new Blob([content],{type}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u)}
-function exportJSON(){download('kursabrechnung-sicherung.json',JSON.stringify({settings:SET,studios:STUDIOS,eintraege:EINTRAEGE},null,2),'application/json');toast('Sicherung exportiert.')}
-function exportCSV(){
-  const jahr=UI.fJahr,sep=';';let rows=[['Datum','Studio','km (hin & zurück)','Betrag (EUR)']];
-  EINTRAEGE.filter(e=>String(e.datum).slice(0,4)==String(jahr)).sort((a,b)=>String(a.datum).localeCompare(String(b.datum))).forEach(e=>{const s=studioById(e.studio_id);if(!s)return;const km=Number(s.entfernung||0)*2;rows.push([dDE(e.datum),s.name,km.toLocaleString('de-DE'),(km*SET.kmSatz).toFixed(2).replace('.',',')])});
-  download('fahrtkosten-'+jahr+'.csv','\uFEFF'+rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(sep)).join('\n'),'text/csv');toast('CSV exportiert.')
-}
+        // Load Settings
+        const { data: settingsData, error: settingsError } = await supabase
+          .from('app_settings')
+          .select('data')
+          .eq('id', 'main')
+          .single();
+        if (!settingsError && settingsData) {
+          appSettings = { ...appSettings, ...settingsData.data };
+        }
+      } catch (err) {
+        console.error('Error loading data:', err);
+      }
+    }
 
-/* ===================== Events ===================== */
-document.addEventListener('click', async (ev)=>{
-  const el=ev.target.closest('[data-action]'); if(!el) return;
-  const a=el.dataset.action;
+    // Render Main App
+    function renderApp() {
+      app.innerHTML = `
+        <div class="app-container">
+          <div class="header">
+            <div>Kursabrechnung</div>
+            <div class="header-actions">
+              <button class="btn-small" onclick="window.logout()">Abmelden</button>
+            </div>
+          </div>
+          <div class="content">
+            <div class="tabs">
+              <button class="tab active" onclick="window.switchTab(event, 'erfassen')">Erfassen</button>
+              <button class="tab" onclick="window.switchTab(event, 'uebersicht')">Übersicht</button>
+              <button class="tab" onclick="window.switchTab(event, 'rechnung')">Rechnung</button>
+              <button class="tab" onclick="window.switchTab(event, 'fahrtkosten')">Fahrtkosten</button>
+              <button class="tab" onclick="window.switchTab(event, 'studios')">Studios</button>
+              <button class="tab" onclick="window.switchTab(event, 'einstellungen')">Einstellungen</button>
+            </div>
 
-  if(a==='setup-save'){ const u=val('su-url').trim(),k=val('su-key').trim(); if(!u||!k){toast('Bitte beide Felder ausfüllen.');return;} localStorage.setItem('sb_url',u);localStorage.setItem('sb_key',k); location.reload(); return; }
-  if(a==='auth-switch'){ UI.authMode=UI.authMode==='login'?'signup':'login'; renderAuth(); return; }
-  if(a==='do-login'||a==='do-signup'){
-    const email=val('au-mail').trim(), pass=val('au-pass'); const errEl=document.getElementById('au-err');
-    if(!email||!pass){ errEl.textContent='Bitte E-Mail und Passwort eingeben.'; return; }
-    el.disabled=true; el.textContent='…';
-    const fn = a==='do-login' ? sb.auth.signInWithPassword({email,password:pass}) : sb.auth.signUp({email,password:pass});
-    const {data,error}=await fn;
-    if(error){ errEl.textContent=error.message; el.disabled=false; el.textContent=a==='do-login'?'Anmelden':'Registrieren'; return; }
-    if(a==='do-signup' && !data.session){ errEl.textContent='Konto angelegt. Bitte ggf. E-Mail bestätigen und dann anmelden.'; UI.authMode='login'; setTimeout(renderAuth,1500); return; }
-    session=data.session; await enterApp(); return;
-  }
-  if(a==='logout'){ await sb.auth.signOut(); session=null; renderAuth(); return; }
+            <div id="erfassen" class="tab-content active">${renderEerfassen()}</div>
+            <div id="uebersicht" class="tab-content">${renderUebersicht()}</div>
+            <div id="rechnung" class="tab-content">${renderRechnung()}</div>
+            <div id="fahrtkosten" class="tab-content">${renderFahrtkosten()}</div>
+            <div id="studios" class="tab-content">${renderStudios()}</div>
+            <div id="einstellungen" class="tab-content">${renderEinstellungen()}</div>
+          </div>
+        </div>
+      `;
+    }
 
-  if(a==='nav'){ UI.tab=el.dataset.tab; render(); return; }
+    function renderEerfassen() {
+      return `
+        <div class="form-section">
+          <h2>Neuer Eintrag</h2>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Datum</label>
+              <input type="date" id="erfassenDatum">
+            </div>
+            <div class="form-group">
+              <label>Studio</label>
+              <select id="erfassenStudio">
+                <option value="">-- Wählen --</option>
+                ${studios.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Anzahl</label>
+              <input type="number" id="erfassenAnzahl" value="1" min="1">
+            </div>
+            <div class="form-group">
+              <label>Notiz</label>
+              <input type="text" id="erfassenNotiz" placeholder="z.B. Ersatz, etc.">
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="window.saveEintrag()">Speichern</button>
+        </div>
+      `;
+    }
 
-  if(a==='entry-add'){
-    const datum=val('e-datum'), studio_id=val('e-studio'), anzahl=+val('e-anzahl')||1, notiz=val('e-notiz').trim();
-    if(!studio_id){ toast('Bitte zuerst ein Studio anlegen.'); return; }
-    if(!datum){ toast('Bitte ein Datum wählen.'); return; }
-    await addEntry({datum,studio_id,anzahl,notiz}); toast('Kurs eingetragen.'); render(); return;
-  }
-  if(a==='entry-del'){ await delEntry(el.dataset.id); render(); return; }
+    function renderUebersicht() {
+      if (eintraege.length === 0) return '<p style="color: var(--muted);">Noch keine Einträge.</p>';
+      return `
+        <table>
+          <thead>
+            <tr>
+              <th>Datum</th>
+              <th>Studio</th>
+              <th>Anzahl</th>
+              <th>Notiz</th>
+              <th>Aktion</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${eintraege.map(e => {
+              const studio = studios.find(s => s.id === e.studio_id);
+              return `
+                <tr>
+                  <td>${e.datum}</td>
+                  <td>${studio?.name || 'unbekannt'}</td>
+                  <td>${e.anzahl}</td>
+                  <td>${e.notiz || '–'}</td>
+                  <td><button class="btn-small" onclick="window.deleteEintrag('${e.id}')">Löschen</button></td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+    }
 
-  if(a==='studio-save'){
-    const plzort=val('s-plzort').trim(), sp=plzort.indexOf(' ');
-    const rec={ name:val('s-name').trim(), ansprechpartner:val('s-ap').trim(), email:val('s-email').trim(),
-      strasse:val('s-strasse').trim(), plz:sp>0?plzort.slice(0,sp):plzort, ort:sp>0?plzort.slice(sp+1):'',
-      verguetung:+val('s-verg')||0, einheit:val('s-einheit'), entfernung:+val('s-entf')||0 };
-    if(!rec.name){ toast('Bitte einen Namen eingeben.'); return; }
-    if(UI.editStudio){ await updateStudio(UI.editStudio,rec); UI.editStudio=null; } else { await addStudio(rec); }
-    toast('Studio gespeichert.'); render(); return;
-  }
-  if(a==='studio-edit'){ UI.editStudio=el.dataset.id; render(); window.scrollTo({top:0,behavior:'smooth'}); return; }
-  if(a==='studio-cancel'){ UI.editStudio=null; render(); return; }
-  if(a==='studio-del'){
-    const used=EINTRAEGE.some(e=>e.studio_id===el.dataset.id);
-    if(used && !confirm('Zu diesem Studio gibt es erfasste Kurse. Trotzdem löschen? Die Kurse bleiben erhalten, verlieren aber ihre Zuordnung.')) return;
-    await delStudio(el.dataset.id); render(); return;
-  }
+    function renderRechnung() {
+      return `
+        <div class="form-section">
+          <h2>Rechnung generieren</h2>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Monat (YYYY-MM)</label>
+              <input type="month" id="rechnungMonat">
+            </div>
+            <div class="form-group">
+              <label>Studio</label>
+              <select id="rechnungStudio">
+                <option value="">-- Alle --</option>
+                ${studios.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="window.generateRechnung()">Vorschau</button>
+        </div>
+        <div id="rechnungPreview"></div>
+      `;
+    }
 
-  if(a==='settings-save'){
-    SET.name=val('c-name').trim();SET.strasse=val('c-strasse').trim();SET.plz=val('c-plz').trim();SET.ort=val('c-ort').trim();
-    SET.steuernummer=val('c-stnr').trim();SET.ustId=val('c-ustid').trim();SET.iban=val('c-iban').trim();SET.bank=val('c-bank').trim();
-    SET.zahlungsziel=+val('c-ziel')||14;SET.rechnungPrefix=val('c-prefix');SET.naechsteNr=+val('c-nnr')||1;
-    SET.kmSatz=+val('c-km')||0.30;SET.kleinunternehmer=val('c-klein')==='1';SET.ustSatz=+val('c-ust')||19;
-    SET.emailBetreff=val('c-ebetreff');SET.emailText=val('c-etext');
-    await saveSettings(); toast('Einstellungen gespeichert.'); render(); return;
-  }
+    function renderFahrtkosten() {
+      const totalKm = eintraege.reduce((sum, e) => {
+        const studio = studios.find(s => s.id === e.studio_id);
+        return sum + ((studio?.entfernung || 0) * 2 * e.anzahl);
+      }, 0);
+      const totalBetrag = totalKm * appSettings.kmSatz;
 
-  if(a==='r-print'){
-    const auto=SET.rechnungPrefix+SET.naechsteNr;
-    if(val('r-nr')===auto){ SET.naechsteNr++; await saveSettings(); }
-    window.print(); render(); return;
-  }
-  if(a==='r-mail'){ prepareMail(); return; }
-  if(a==='f-csv'){ exportCSV(); return; }
-  if(a==='data-export'){ exportJSON(); return; }
-});
-document.addEventListener('change',(ev)=>{
-  const el=ev.target.closest('[data-action]'); const id=ev.target.id;
-  if(el){ const a=el.dataset.action;
-    if(a==='month-ov'){ UI.month=ev.target.value; render(); return; }
-    if(a==='r-studio'){ UI.rStudio=ev.target.value; render(); return; }
-    if(a==='r-month'){ UI.rMonth=ev.target.value; render(); return; }
-    if(a==='f-jahr'){ UI.fJahr=+ev.target.value; render(); return; }
-  }
-  if(id==='e-studio'){ const s=studioById(ev.target.value),l=document.getElementById('e-einheit-lbl'); if(s&&l) l.textContent=s.einheit+'e'; }
-});
-document.addEventListener('input',(ev)=>{ if(['r-nr','r-datum'].includes(ev.target.id)){ const pa=document.getElementById('print-area'); if(pa) pa.innerHTML=invoiceHTML(); }});
+      return `
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value">${totalKm.toFixed(1)}</div>
+            <div class="stat-label">km gesamt</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">€ ${totalBetrag.toFixed(2)}</div>
+            <div class="stat-label">Betrag (€${appSettings.kmSatz}/km)</div>
+          </div>
+        </div>
+        <div class="disclaimer">
+          ⚠️ Fahrtkosten sind Betriebsausgaben (keine Entfernungspauschale). Bitte mit Steuernummer abstimmen.
+        </div>
+      `;
+    }
 
-/* ===================== Start ===================== */
-boot();
-</script>
+    function renderStudios() {
+      return `
+        <div class="form-section">
+          <h2>Neues Studio</h2>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Name</label>
+              <input type="text" id="studioName" placeholder="Studio XYZ">
+            </div>
+            <div class="form-group">
+              <label>E-Mail</label>
+              <input type="email" id="studioEmail" placeholder="kontakt@studio.de">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Strasse</label>
+              <input type="text" id="studioStrasse">
+            </div>
+            <div class="form-group">
+              <label>PLZ</label>
+              <input type="text" id="studioPLZ">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Ort</label>
+              <input type="text" id="studioOrt">
+            </div>
+            <div class="form-group">
+              <label>Entfernung (km einfach)</label>
+              <input type="number" id="studioEntfernung" step="0.1" value="0">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Vergütung pro ${appSettings.einheit || 'Kurs'}</label>
+              <input type="number" id="studioVerguetung" step="0.01" value="0">
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="window.saveStudio()">Speichern</button>
+        </div>
+
+        <h2 style="margin-top: 32px; margin-bottom: 16px;">Studios</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Ort</th>
+              <th>Entfernung</th>
+              <th>Vergütung</th>
+              <th>Aktion</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${studios.map(s => `
+              <tr>
+                <td>${s.name}</td>
+                <td>${s.ort || '–'}</td>
+                <td>${s.entfernung || 0} km</td>
+                <td>€ ${s.verguetung || 0}</td>
+                <td><button class="btn-small" onclick="window.deleteStudio('${s.id}')">Löschen</button></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderEinstellungen() {
+      return `
+        <div class="form-section">
+          <h2>Persönliche Daten</h2>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Name</label>
+              <input type="text" id="settingsName" value="${appSettings.name}">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Strasse</label>
+              <input type="text" id="settingsStrasse" value="${appSettings.strasse}">
+            </div>
+            <div class="form-group">
+              <label>PLZ</label>
+              <input type="text" id="settingsPLZ" value="${appSettings.plz}">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Ort</label>
+              <input type="text" id="settingsOrt" value="${appSettings.ort}">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h2>Steuerdaten</h2>
+          <div class="form-row">
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="settingsKleinunternehmer" ${appSettings.kleinunternehmer ? 'checked' : ''}>
+                Kleinunternehmer (§19 UStG)
+              </label>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>USt-Satz (%)</label>
+              <input type="number" id="settingsUstSatz" value="${appSettings.ustSatz}" step="0.1">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Steuernummer</label>
+              <input type="text" id="settingsSteuernummer" value="${appSettings.steuernummer}">
+            </div>
+            <div class="form-group">
+              <label>USt-ID</label>
+              <input type="text" id="settingsUstId" value="${appSettings.ustId}">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h2>Bankdaten</h2>
+          <div class="form-row">
+            <div class="form-group">
+              <label>IBAN</label>
+              <input type="text" id="settingsIBAN" value="${appSettings.iban}">
+            </div>
+            <div class="form-group">
+              <label>Bank</label>
+              <input type="text" id="settingsBank" value="${appSettings.bank}">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h2>Fahrtkosten</h2>
+          <div class="form-row">
+            <div class="form-group">
+              <label>km-Satz (€)</label>
+              <input type="number" id="settingsKmSatz" value="${appSettings.kmSatz}" step="0.01">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h2>Rechnungseinstellungen</h2>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Rechnungsnummer Präfix</label>
+              <input type="text" id="settingsRechnungPrefix" value="${appSettings.rechnungPrefix}">
+            </div>
+            <div class="form-group">
+              <label>Nächste Nummer</label>
+              <input type="number" id="settingsNaechsteNr" value="${appSettings.naechsteNr}" min="1">
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label>Email-Betreff Vorlage</label>
+              <input type="text" id="settingsEmailBetreff" value="${appSettings.emailBetreff}" placeholder="{nr}, {monat}, {studio}">
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label>Email-Text Vorlage</label>
+              <textarea id="settingsEmailText">${appSettings.emailText}</textarea>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="window.saveSettings()" style="margin-bottom: 24px;">Speichern</button>
+
+        <div class="disclaimer">
+          ⚠️ Diese App behandelt Steuerdaten. Bitte vor Einreichung mit deinem Steuerberater abstimmen.
+        </div>
+      `;
+    }
+
+    window.switchTab = function(event, tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById(tab).classList.add('active');
+    };
+
+    window.saveEintrag = async function() {
+      const datum = document.getElementById('erfassenDatum').value;
+      const studioId = document.getElementById('erfassenStudio').value;
+      const anzahl = parseInt(document.getElementById('erfassenAnzahl').value);
+      const notiz = document.getElementById('erfassenNotiz').value;
+
+      if (!datum || !studioId) {
+        alert('Bitte Datum und Studio ausfüllen.');
+        return;
+      }
+
+      try {
+        const { error } = await supabase.from('eintraege').insert([{
+          datum, studio_id: studioId, anzahl, notiz
+        }]);
+        if (error) throw error;
+        await loadAppData();
+        renderApp();
+      } catch (err) {
+        alert('Fehler: ' + err.message);
+      }
+    };
+
+    window.deleteEintrag = async function(id) {
+      if (!confirm('Wirklich löschen?')) return;
+      try {
+        const { error } = await supabase.from('eintraege').delete().eq('id', id);
+        if (error) throw error;
+        await loadAppData();
+        renderApp();
+      } catch (err) {
+        alert('Fehler: ' + err.message);
+      }
+    };
+
+    window.saveStudio = async function() {
+      const name = document.getElementById('studioName').value;
+      if (!name) {
+        alert('Name erforderlich.');
+        return;
+      }
+
+      const data = {
+        name,
+        email: document.getElementById('studioEmail').value,
+        strasse: document.getElementById('studioStrasse').value,
+        plz: document.getElementById('studioPLZ').value,
+        ort: document.getElementById('studioOrt').value,
+        entfernung: parseFloat(document.getElementById('studioEntfernung').value),
+        verguetung: parseFloat(document.getElementById('studioVerguetung').value)
+      };
+
+      try {
+        const { error } = await supabase.from('studios').insert([data]);
+        if (error) throw error;
+        await loadAppData();
+        renderApp();
+        window.switchTab({target: document.querySelectorAll('.tab')[4]}, 'studios');
+      } catch (err) {
+        alert('Fehler: ' + err.message);
+      }
+    };
+
+    window.deleteStudio = async function(id) {
+      if (!confirm('Wirklich löschen?')) return;
+      try {
+        const { error } = await supabase.from('studios').delete().eq('id', id);
+        if (error) throw error;
+        await loadAppData();
+        renderApp();
+      } catch (err) {
+        alert('Fehler: ' + err.message);
+      }
+    };
+
+    window.saveSettings = async function() {
+      appSettings = {
+        ...appSettings,
+        name: document.getElementById('settingsName').value,
+        strasse: document.getElementById('settingsStrasse').value,
+        plz: document.getElementById('settingsPLZ').value,
+        ort: document.getElementById('settingsOrt').value,
+        steuernummer: document.getElementById('settingsSteuernummer').value,
+        ustId: document.getElementById('settingsUstId').value,
+        iban: document.getElementById('settingsIBAN').value,
+        bank: document.getElementById('settingsBank').value,
+        kleinunternehmer: document.getElementById('settingsKleinunternehmer').checked,
+        ustSatz: parseFloat(document.getElementById('settingsUstSatz').value),
+        kmSatz: parseFloat(document.getElementById('settingsKmSatz').value),
+        rechnungPrefix: document.getElementById('settingsRechnungPrefix').value,
+        naechsteNr: parseInt(document.getElementById('settingsNaechsteNr').value),
+        emailBetreff: document.getElementById('settingsEmailBetreff').value,
+        emailText: document.getElementById('settingsEmailText').value
+      };
+
+      try {
+        const { error } = await supabase.from('app_settings').upsert([{
+          id: 'main',
+          data: appSettings
+        }]);
+        if (error) throw error;
+        alert('Einstellungen gespeichert!');
+      } catch (err) {
+        alert('Fehler: ' + err.message);
+      }
+    };
+
+    window.generateRechnung = function() {
+      const monat = document.getElementById('rechnungMonat').value;
+      const studioId = document.getElementById('rechnungStudio').value;
+
+      if (!monat) {
+        alert('Monat auswählen.');
+        return;
+      }
+
+      const [year, month] = monat.split('-');
+      const filtered = eintraege.filter(e => {
+        const match = e.datum.startsWith(`${year}-${month}`);
+        return studioId ? match && e.studio_id === studioId : match;
+      });
+
+      let total = 0;
+      const lines = filtered.map(e => {
+        const studio = studios.find(s => s.id === e.studio_id);
+        const betrag = (studio?.verguetung || 0) * e.anzahl;
+        total += betrag;
+        return `<tr><td>${e.datum}</td><td>${studio?.name}</td><td>${e.anzahl}</td><td>€ ${betrag.toFixed(2)}</td></tr>`;
+      }).join('');
+
+      const rechnungsNr = `${appSettings.rechnungPrefix}${appSettings.naechsteNr}`;
+      const html = `
+        <div class="form-section invoice-container">
+          <h2>Rechnung ${rechnungsNr}</h2>
+          <p><strong>${appSettings.name}</strong><br>${appSettings.strasse}<br>${appSettings.plz} ${appSettings.ort}</p>
+          <p>Zeitraum: ${month}/${year}</p>
+          <table>
+            <thead><tr><th>Datum</th><th>Studio</th><th>Anzahl</th><th>Betrag</th></tr></thead>
+            <tbody>${lines}</tbody>
+          </table>
+          <p style="font-size: 16px; font-weight: bold;">Gesamtbetrag: € ${total.toFixed(2)}</p>
+          <button class="btn btn-primary" onclick="window.print()" style="margin-top: 16px;">Drucken</button>
+        </div>
+      `;
+
+      document.getElementById('rechnungPreview').innerHTML = html;
+      appSettings.naechsteNr++;
+    };
+
+    window.logout = async function() {
+      await supabase.auth.signOut();
+      currentUser = null;
+      appState = 'auth';
+      renderAuthScreen();
+    };
+
+    // Init
+    const savedUrl = localStorage.getItem('supabaseUrl');
+    const savedKey = localStorage.getItem('supabaseKey');
+
+    if (savedUrl && savedKey) {
+      supabase = window.supabase.createClient(savedUrl, savedKey);
+      appState = 'auth';
+      renderAuthScreen();
+    } else {
+      renderSetupScreen();
+    }
+  </script>
 </body>
 </html>
