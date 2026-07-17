@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kursabrechnung</title>
-  <script async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
       --paper: #EAE8E0;
@@ -138,6 +138,11 @@
 
     .btn-primary:hover {
       background: var(--pine-d);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
 
     .error {
@@ -452,7 +457,7 @@
             </div>
             <div class="form-group">
               <label>Anon Public Key</label>
-              <textarea id="anonKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."></textarea>
+              <textarea id="anonKey" placeholder="sb_publishable_..."></textarea>
             </div>
             <button class="btn btn-primary" onclick="window.initSupabase()">Verbinden</button>
           </div>
@@ -468,6 +473,13 @@
 
       if (!projectUrl || !anonKey) {
         errorDiv.textContent = 'Bitte beide Felder ausfüllen.';
+        errorDiv.classList.remove('hidden');
+        return;
+      }
+
+      // Check if supabase is loaded
+      if (typeof window.supabase === 'undefined') {
+        errorDiv.textContent = 'Supabase-Bibliothek wird noch geladen. Bitte warte einen Moment und versuche es erneut.';
         errorDiv.classList.remove('hidden');
         return;
       }
@@ -493,11 +505,11 @@
             <div id="authError" class="error hidden"></div>
             <div class="form-group">
               <label>E-Mail</label>
-              <input type="email" id="email" placeholder="deine@email.com">
+              <input type="email" id="email" placeholder="deine@email.com" onkeypress="if(event.key==='Enter') window.login()">
             </div>
             <div class="form-group">
               <label>Passwort</label>
-              <input type="password" id="password" placeholder="••••••••">
+              <input type="password" id="password" placeholder="••••••••" onkeypress="if(event.key==='Enter') window.login()">
             </div>
             <button class="btn btn-primary" onclick="window.login()">Anmelden</button>
             <div style="margin-top: 16px; text-align: center;">
@@ -955,7 +967,6 @@
         if (error) throw error;
         await loadAppData();
         renderApp();
-        window.switchTab({target: document.querySelectorAll('.tab')[4]}, 'studios');
       } catch (err) {
         alert('Fehler: ' + err.message);
       }
