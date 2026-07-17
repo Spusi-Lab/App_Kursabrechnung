@@ -391,14 +391,27 @@
       renderAuthScreen();
     };
 
-    const savedUrl = localStorage.getItem('supabaseUrl');
-    const savedKey = localStorage.getItem('supabaseKey');
-    if (savedUrl && savedKey) {
-      supabase = window.supabase.createClient(savedUrl, savedKey);
-      appState = 'auth';
-      renderAuthScreen();
+    function boot() {
+      try {
+        const savedUrl = localStorage.getItem('supabaseUrl');
+        const savedKey = localStorage.getItem('supabaseKey');
+        if (savedUrl && savedKey && typeof window.supabase !== 'undefined') {
+          supabase = window.supabase.createClient(savedUrl, savedKey);
+          appState = 'auth';
+          renderAuthScreen();
+        } else {
+          renderSetupScreen();
+        }
+      } catch (err) {
+        console.error('Boot error:', err);
+        renderSetupScreen();
+      }
+    }
+    // Warte bis Seite und Supabase geladen sind
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', boot);
     } else {
-      renderSetupScreen();
+      boot();
     }
   </script>
 </body>
